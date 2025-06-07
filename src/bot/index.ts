@@ -1,205 +1,158 @@
-import 'dotenv/config';
-
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
 // Helper to get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(__filename);
 
 // Initialize bot with your token
-const bot = new Telegraf(process.env.BOT_TOKEN || '');
+const BOT_TOKEN = '8189696941:AAH8zEr-jWjug4wtW5ziXwY1wPgh7GT6le8';
+const WEB_APP_URL = 'https://mniko11.github.io/MYourGame/';
 
-// Games storage (in-memory for now)
-interface StoredGame {
+// Create games directory if it doesn't exist
+const gamesDir = join(__dirname, '..', '..', 'games');
+if (!fs.existsSync(gamesDir)) {
+  fs.mkdirSync(gamesDir, { recursive: true });
+}
+
+// Store games in memory
+const storedGames: Array<{
   id: string;
   title: string;
   description: string;
-  format: 'all' | '32x32'; // Assuming 32x32 for now based on context
-  code: string; // The full MYG game code
-}
+  format: string;
+  code: string;
+}> = [];
 
-const storedGames: StoredGame[] = [];
-const GAMES_DIR = path.join(__dirname, '../../games'); // This directory is not used for in-memory storage, but kept for context.
+// Initialize bot
+const bot = new Telegraf(BOT_TOKEN);
 
-// Ensure games directory exists (not strictly needed for in-memory, but harmless)
-if (!fs.existsSync(GAMES_DIR)) {
-  fs.mkdirSync(GAMES_DIR, { recursive: true });
-}
-
-// Command handlers
+// Welcome message with web app button
 bot.command('start', async (ctx) => {
-  const gamesJson = encodeURIComponent(JSON.stringify(storedGames));
   await ctx.reply(
-    '👋 Привет! Я бот для MYourGame мини-приложения.\n\n' +
-    'Отправь мне файл игры в формате .mygt, и я добавлю его в каталог игр.\n\n' +
-    'Нажми кнопку ниже, чтобы открыть мини-приложение!',
+    'Welcome to MYourGame! 🎮\n\n' +
+    'Send me a .mygt file to add a new game to the hub.\n' +
+    'Use /help to see available commands.',
     {
       reply_markup: {
-        inline_keyboard: [
-          [{ text: '🎮 Open MYourGame', web_app: { url: process.env.WEB_APP_URL + `?startapp=${gamesJson}` || 'https://mniko11.github.io/MYourGame/' } }]
-        ]
+        inline_keyboard: [[
+          { text: '🎮 Open MYourGame', web_app: { url: WEB_APP_URL } }
+        ]]
       }
     }
   );
 });
 
+// Help command
 bot.command('help', async (ctx) => {
   await ctx.reply(
-    '📖 Справка по использованию бота:\n\n' +
-    '1. Создайте игру используя MYG язык программирования\n' +
-    '2. Сохраните файл с расширением .mygt\n' +
-    '3. Отправьте файл мне\n' +
-    '4. После проверки игра будет добавлена в каталог\n\n' +
-    'Для просмотра документации MYG языка используйте команду /docs'
+    'Available commands:\n\n' +
+    '/start - Start the bot and get the web app button\n' +
+    '/help - Show this help message\n' +
+    '/docs - Show MYG language documentation\n\n' +
+    'To add a game, simply send me a .mygt file!'
   );
 });
 
+// Documentation command
 bot.command('docs', async (ctx) => {
   await ctx.reply(
-    '📚 Документация MYG языка:\n\n' +
-    '1. Переменные:\n' +
-    '   var name = value - Объявление переменной\n' +
-    '   display var1, var2 - Отображение переменных\n\n' +
-    '2. Сетка (32x32):\n' +
-    '   set x,y,value - Установка значения ячейки\n' +
-    '   get x,y - Получение значения ячейки\n' +
-    '   clear - Очистка сетки (не реализовано пока)\n\n' +
-    '3. Управление:\n' +
-    '   button "name" { ... } - Определение кнопки\n\n' +
-    '4. Игровой цикл:\n' +
-    '   loop { ... } - Основной цикл\n' +
-    '   update - Обновление состояния (внутреннее)\n' +
-    '   draw - Отрисовка состояния (внутреннее)\n' +
-    '   stop - Остановка игры\n'+ 
-    '5. Условные выражения:\n' +
-    '   if condition { ... } - Условие ИФ\n' +
-    '   else if condition { ... } - Условие ЭЛСИФ\n' +
-    '   else { ... } - Условие ЭЛС\n'+ 
-    '6. Встроенные функции:\n' +
-    '   random(min, max) - Случайное число\n' +
-    '   snake_x, snake_y - Координаты головы змейки (только для snake)'
+    'MYG Language Documentation 📚\n\n' +
+    'Variables:\n' +
+    'var name = value\n\n' +
+    'Grid:\n' +
+    'set x, y, color\n\n' +
+    'Buttons:\n' +
+    'button "emoji" {\n' +
+    '  // button code\n' +
+    '}\n\n' +
+    'Game Loop:\n' +
+    'loop {\n' +
+    '  // game loop code\n' +
+    '}\n\n' +
+    'Colors:\n' +
+    'Use any valid CSS color (hex, rgb, name)\n\n' +
+    'Example:\n' +
+    'var x = 0\n' +
+    'var y = 0\n' +
+    'button "⬆️" {\n' +
+    '  y = y - 1\n' +
+    '  set x, y, "#FF0000"\n' +
+    '}\n' +
+    'loop {\n' +
+    '  // game logic\n' +
+    '}'
   );
 });
 
 // Handle .mygt files
-bot.on(message('document'), async (ctx) => {
-  const file = ctx.message.document;
-  
-  if (!file.file_name?.endsWith('.mygt')) {
-    await ctx.reply('❌ Пожалуйста, отправьте файл с расширением .mygt');
+bot.on('document', async (ctx) => {
+  const doc = ctx.message.document;
+  if (!doc.file_name?.endsWith('.mygt')) {
+    await ctx.reply('❌ Please send a .mygt file');
     return;
   }
 
   try {
-    const fileInfo = await ctx.telegram.getFile(file.file_id);
-    const downloadUrl = `https://api.telegram.org/file/bot${process.env.BOT_TOKEN}/${fileInfo.file_path}`;
-    const response = await fetch(downloadUrl);
-    const contentBuffer = await response.arrayBuffer();
-    const content = Buffer.from(contentBuffer).toString('utf-8');
+    // Download file
+    const file = await ctx.telegram.getFile(doc.file_id);
+    const filePath = join(gamesDir, doc.file_name);
+    const response = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${file.file_path}`);
+    const buffer = await response.arrayBuffer();
+    fs.writeFileSync(filePath, Buffer.from(buffer));
 
-    const gameData = parseAndValidateMygGame(content);
+    // Read file content
+    const fileContent = fs.readFileSync(filePath, 'utf8');
 
-    if (!gameData) {
-      await ctx.reply('❌ Файл не соответствует формату MYG языка или не содержит необходимых метаданных.');
-      return;
-    }
+    // Parse metadata
+    const titleMatch = fileContent.match(/title\s*=\s*"([^"]+)"/);
+    const descriptionMatch = fileContent.match(/description\s*=\s*"([^"]+)"/);
+    const formatMatch = fileContent.match(/format\s*=\s*"([^"]+)"/);
 
-    // Assign a unique ID (for simplicity, using a timestamp)
-    gameData.id = `game_${Date.now()}`;
-    storedGames.push(gameData);
+    const title = titleMatch?.[1] || doc.file_name.replace('.mygt', '');
+    const description = descriptionMatch?.[1] || 'No description';
+    const format = formatMatch?.[1] || '32x32';
 
-    await ctx.reply(`✅ Игра "${gameData.title}" успешно добавлена в каталог!`);
+    // Add game to storage
+    const game = {
+      id: doc.file_name,
+      title,
+      description,
+      format,
+      code: fileContent
+    };
+    storedGames.push(game);
+
+    // Send success message with web app button
+    await ctx.reply(
+      '✅ Game added successfully!\n\n' +
+      `Title: ${title}\n` +
+      `Description: ${description}\n` +
+      `Format: ${format}\n\n` +
+      'Click the button below to play:',
+      {
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '🎮 Play!', web_app: { url: `${WEB_APP_URL}?games=${encodeURIComponent(JSON.stringify(storedGames))}` } }
+          ]]
+        }
+      }
+    );
   } catch (error) {
     console.error('Error processing file:', error);
-    await ctx.reply('❌ Произошла ошибка при обработке файла');
+    await ctx.reply('❌ Error processing file. Please try again.');
   }
 });
 
-// Parse and validate game file content, extracting metadata
-function parseAndValidateMygGame(content: string): StoredGame | null {
-  const lines = content.split('\n');
-  let title = 'Untitled Game';
-  let description = 'No description provided.';
-  let foundTitle = false;
-  let descriptionLines: string[] = [];
-  let inCommentsAfterTitle = false;
-
-  // Basic validation checks
-  const requiredSections = ['var', 'display', 'button', 'loop'];
-  const hasRequiredSections = requiredSections.every(section =>
-    lines.some(line => line.includes(section))
-  );
-  if (!hasRequiredSections) return null;
-
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-
-    if (trimmedLine.startsWith('#')) {
-      if (trimmedLine.startsWith('# ')) {
-        const commentContent = trimmedLine.substring(2).trim();
-        if (!foundTitle) {
-          title = commentContent;
-          foundTitle = true;
-          inCommentsAfterTitle = true;
-        } else if (inCommentsAfterTitle) {
-          descriptionLines.push(commentContent);
-        }
-      }
-    } else {
-      if (inCommentsAfterTitle && descriptionLines.length > 0) {
-        description = descriptionLines.join(' ');
-      }
-      inCommentsAfterTitle = false;
-
-      // Basic syntax validation
-      if (trimmedLine.startsWith('var ')) {
-        if (!/^var\\s+\\w+\\s*=\\s*\\d+$/.test(trimmedLine)) return null;
-      } else if (trimmedLine.startsWith('set ')) {
-        if (!/^set\\s+[\\w\\d\\+\\-\\*\\/\\s(),]+\\s*,\\s*[\\w\\d\\+\\-\\*\\/\\s(),]+\\s*,\\s*[\\w\\d\\+\\-\\*\\/\\s(),]+$/.test(trimmedLine)) return null;
-      } else if (trimmedLine.startsWith('button ')) {
-        if (!/^button\\s+"[^"]+"\\s*{\/?$/.test(trimmedLine)) return null; // Added /? for optional closing brace on same line
-      } else if (trimmedLine.startsWith('display ')) {
-        if (!/^display\\s+[\\w\\d\\s,]+$/.test(trimmedLine)) return null;
-      } else if (trimmedLine === 'loop {' || trimmedLine === '}' || trimmedLine === 'stop' || trimmedLine === 'update' || trimmedLine === 'draw') {
-        // Valid control flow or loop commands
-      } else if (trimmedLine.startsWith('if ') || trimmedLine.startsWith('else if ') || trimmedLine === 'else {') {
-        if (!trimmedLine.endsWith('{')) return null; // Ensure if/else if/else blocks start with {
-      } else {
-        // Unknown command or invalid syntax
-        // For stricter validation, could return null here.
-        // For now, we allow unknown lines if they don't break expected patterns.
-      }
-    }
-  }
-
-  // Ensure description is captured if comments end before non-comment line
-  if (inCommentsAfterTitle && descriptionLines.length > 0) {
-    description = descriptionLines.join(' ');
-  }
-
-  // Simple validation for description length and content
-  if (description.length > 100) {
-    description = description.substring(0, 97) + '...';
-  }
-
-  return {
-    id: '', // Will be assigned by the bot after successful parse
-    title: title,
-    description: description,
-    format: '32x32', // Defaulting for now
-    code: content,
-  };
-}
-
 // Start bot
 bot.launch().then(() => {
-  console.log('Bot started successfully');
+  console.log('Bot started successfully!');
 }).catch((error) => {
-  console.error('Error starting bot:', error);
+  console.error('Failed to start bot:', error);
 });
 
 // Enable graceful stop
