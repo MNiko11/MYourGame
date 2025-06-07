@@ -37,6 +37,7 @@ const GridCell = styled.div<{ value: number }>`
   background-color: ${props => 
     props.value === 0 ? 'var(--tg-theme-bg-color, #ffffff)' :
     props.value === 1 ? 'var(--tg-theme-button-color, #2481cc)' :
+    props.value === 2 ? 'var(--tg-theme-link-color, #2481cc)' :
     'var(--tg-theme-link-color, #2481cc)'
   };
 `;
@@ -68,20 +69,33 @@ export interface GameState {
   grid: number[][];
   buttons: Record<string, () => void>;
   displayVariables: string[];
+  snakeBody: [number, number][];
+  foodPosition: [number, number] | null;
 }
 
 class MYGInterpreter {
   private state: GameState;
   private gameLoopInterval: number | null = null;
   private loopInstructions: (() => void)[] = [];
+  private readonly initialGrid: number[][];
 
   constructor() {
+    const initialGrid = Array(32).fill(null).map(() => Array(32).fill(0));
+    this.initialGrid = JSON.parse(JSON.stringify(initialGrid));
+
     this.state = {
       variables: {},
-      grid: Array(32).fill(null).map(() => Array(32).fill(0)),
+      grid: initialGrid,
       buttons: {},
       displayVariables: [],
+      snakeBody: [],
+      foodPosition: null,
     };
+  }
+
+  private getSnakeHead(): [number, number] | null {
+    if (this.state.snakeBody.length === 0) return null;
+    return this.state.snakeBody[this.state.snakeBody.length - 1];
   }
 
   private evaluateExpression(expression: string): number {
@@ -89,6 +103,15 @@ class MYGInterpreter {
 
     if (this.state.variables.hasOwnProperty(expression)) {
       return this.state.variables[expression];
+    }
+    
+    if (expression === 'snake_x') {
+        const head = this.getSnakeHead();
+        return head ? head[0] : 0;
+    }
+    if (expression === 'snake_y') {
+        const head = this.getSnakeHead();
+        return head ? head[1] : 0;
     }
     
     const randomMatch = expression.match(/random\((\d+),(\d+)\)/);
@@ -135,13 +158,23 @@ class MYGInterpreter {
   }
 
   parse(code: string) {
+    this.stopGameLoop();
+    this.state = {
+      variables: {},
+      grid: JSON.parse(JSON.stringify(this.initialGrid)),
+      buttons: {},
+      displayVariables: [],
+      snakeBody: [],
+      foodPosition: null,
+    };
+    this.loopInstructions = [];
+
     const lines = code.split('\n');
     let inLoop = false;
     let currentButtonName: string | null = null;
     let currentIfCondition: boolean | null = null;
     let skipBlock = false;
-
-    this.loopInstructions = [];
+    let buttonActionLines: string[] = [];
 
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i].trim();
@@ -153,26 +186,28 @@ class MYGInterpreter {
           inLoop = false;
           continue;
         } else if (line === 'update') {
-            this.loopInstructions.push(() => { /* nothing to do here, state update is external */ });
+            this.loopInstructions.push(() => { /* handled by React state update */ });
             continue;
         } else if (line === 'draw') {
-            this.loopInstructions.push(() => { /* nothing to do here, rendering is external */ });
+            this.loopInstructions.push(() => { /* handled by React rendering */ });
             continue;
         }
-
         this.loopInstructions.push(() => this.executeLine(line));
         continue;
       }
 
       if (currentButtonName) {
         if (line === '}') {
+          const buttonName = currentButtonName;
+          const linesToExecute = [...buttonActionLines];
+          this.state.buttons[buttonName] = () => {
+            linesToExecute.forEach(cmd => this.executeLine(cmd));
+          };
           currentButtonName = null;
+          buttonActionLines = [];
           continue;
         }
-        const buttonLine = line;
-        this.state.buttons[currentButtonName] = () => {
-          this.executeLine(buttonLine);
-        };
+        buttonActionLines.push(line);
         continue;
       }
 
@@ -195,6 +230,11 @@ class MYGInterpreter {
           const y = this.evaluateExpression(match[2]);
           const value = this.evaluateExpression(match[3]);
           if (x >= 0 && x < 32 && y >= 0 && y < 32) {
+              if (value === 1) {
+                  this.state.snakeBody.push([x, y]);
+              } else if (value === 2) {
+                  this.state.foodPosition = [x, y];
+              }
               this.state.grid[y][x] = value;
           }
         }
@@ -203,6 +243,7 @@ class MYGInterpreter {
         const match = line.match(/button\s+"([^"]+)"\s*\{/);
         if (match) {
           currentButtonName = match[1];
+          buttonActionLines = [];
         }
       }
       else if (line === 'loop {') {
@@ -294,7 +335,20 @@ class MYGInterpreter {
         const y = this.evaluateExpression(match[2]);
         const value = this.evaluateExpression(match[3]);
         if (x >= 0 && x < 32 && y >= 0 && y < 32) {
-            this.state.grid[y][x] = value;
+            if (value === 1) {
+                this.state.snakeBody.push([x, y]);
+                const snakeLength = this.state.variables['snake_length'] || 0;
+                if (this.state.snakeBody.length > snakeLength) {
+                    const tail = this.state.snakeBody.shift();
+                    if (tail) {
+                        this.state.grid[tail[1]][tail[0]] = 0;
+                    }
+                }
+            } else if (value === 2) {
+                this.state.foodPosition = [x, y];
+            } else {
+                this.state.grid[y][x] = value;
+            }
         }
       }
     }
@@ -305,18 +359,33 @@ class MYGInterpreter {
   }
 
   getState(): GameState {
+    const currentGrid = Array(32).fill(null).map(() => Array(32).fill(0));
+
+    for (const [x, y] of this.state.snakeBody) {
+        if (x >= 0 && x < 32 && y >= 0 && y < 32) {
+            currentGrid[y][x] = 1;
+        }
+    }
+    if (this.state.foodPosition) {
+        const [fx, fy] = this.state.foodPosition;
+        if (fx >= 0 && fx < 32 && fy >= 0 && fy < 32) {
+            currentGrid[fy][fx] = 2;
+        }
+    }
+    this.state.grid = currentGrid;
+
     return this.state;
   }
 
   startGameLoop(updateCallback: () => void) {
     if (this.gameLoopInterval) return;
-
+    
     this.gameLoopInterval = window.setInterval(() => {
       for (const instruction of this.loopInstructions) {
         instruction();
       }
       updateCallback();
-    }, 1000 / 60);
+    }, 1000 / 10);
   }
 
   stopGameLoop() {
@@ -339,6 +408,8 @@ const GameEngine: React.FC<GameEngineProps> = ({ gameCode, onGameStateChange }) 
     grid: Array(32).fill(null).map(() => Array(32).fill(0)),
     buttons: {},
     displayVariables: [],
+    snakeBody: [],
+    foodPosition: null,
   });
 
   useEffect(() => {

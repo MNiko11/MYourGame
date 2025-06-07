@@ -62,26 +62,38 @@ const GameHub = styled.div`
 
 const GameCard = styled.div`
   background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
-  border-radius: 12px;
-  padding: 15px;
+  border-radius: 8px;
+  padding: 10px;
   cursor: pointer;
   transition: transform 0.2s ease;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 
   &:hover {
-    transform: scale(1.05);
+    transform: scale(1.03);
   }
 `;
 
 const GameTitle = styled.h3`
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   color: var(--tg-theme-text-color, #000000);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const GameDescription = styled.p`
-  margin: 8px 0 0;
-  font-size: 12px;
+  margin: 4px 0 0;
+  font-size: 11px;
   color: var(--tg-theme-hint-color, #999999);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 type GameFormat = 'all' | '32x32';
