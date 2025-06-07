@@ -60,7 +60,6 @@ Error generating stack: `+o.message+`
   display: grid;
   grid-template-columns: repeat(32, 1fr);
   grid-template-rows: repeat(32, 1fr);
-  gap: 1px;
   padding: 10px;
   background-color: var(--tg-theme-hint-color, #999999);
 `,Am=he.div`
@@ -213,5 +212,5 @@ loop {
     update
     draw
 }
-`,qm=()=>{const[e,t]=Ie.useState("all"),[n,r]=Ie.useState(Zm),[l,o]=Ie.useState(null),[i,u]=Ie.useState({});Tt.useEffect(()=>{var p;if((p=window.Telegram)!=null&&p.WebApp){const m=window.Telegram.WebApp.MainButton;if(l){m.setText("Back to Games"),m.show();const h=()=>{o(null),m.hide(),m.offClick(h)};m.onClick(h)}else m.hide()}},[l]),Tt.useEffect(()=>{var p;(p=window.Telegram)!=null&&p.WebApp&&(window.Telegram.WebApp.ready(),window.Telegram.WebApp.expand())},[]);const s=n.filter(p=>e==="all"||p.format===e),c=p=>{u(p.variables)};return X.jsx(Hm,{children:l?X.jsx(Vm,{gameCode:l,onGameStateChange:c}):X.jsxs(X.Fragment,{children:[X.jsxs(Qm,{children:[X.jsx(Sa,{active:e==="all",onClick:()=>t("all"),children:"All"}),X.jsx(Sa,{active:e==="32x32",onClick:()=>t("32x32"),children:"32x32"})]}),X.jsx(Gm,{children:s.map(p=>X.jsxs(Km,{onClick:()=>{var m,h;p.id==="1"?o(Jm):(h=(m=window.Telegram)==null?void 0:m.WebApp)==null||h.showAlert(`Loading game: ${p.title} (not yet implemented)`)},children:[X.jsx(Ym,{children:p.title}),X.jsx(Xm,{children:p.description})]},p.id))})]})})};let nr=document.getElementById("root");nr||(nr=document.createElement("div"),nr.id="root",document.body.appendChild(nr));Jo.createRoot(nr).render(X.jsx(Tt.StrictMode,{children:X.jsx(qm,{})}));
-//# sourceMappingURL=index-BTtasmjx.js.map
+`,qm=()=>{const[e,t]=Ie.useState("all"),[n,r]=Ie.useState(Zm),[l,o]=Ie.useState(null),[i,u]=Ie.useState({});Tt.useEffect(()=>{var p;if((p=window.Telegram)!=null&&p.WebApp){const m=window.Telegram.WebApp.MainButton;if(l){m.setText("⬅️ Back"),m.show();const h=()=>{o(null),m.hide(),m.offClick(h)};m.onClick(h)}else m.hide()}},[l]),Tt.useEffect(()=>{var p;(p=window.Telegram)!=null&&p.WebApp&&(window.Telegram.WebApp.ready(),window.Telegram.WebApp.expand())},[]);const s=n.filter(p=>e==="all"||p.format===e),c=p=>{u(p.variables)};return X.jsx(Hm,{children:l?X.jsx(Vm,{gameCode:l,onGameStateChange:c}):X.jsxs(X.Fragment,{children:[X.jsxs(Qm,{children:[X.jsx(Sa,{active:e==="all",onClick:()=>t("all"),children:"All"}),X.jsx(Sa,{active:e==="32x32",onClick:()=>t("32x32"),children:"32x32"})]}),X.jsx(Gm,{children:s.map(p=>X.jsxs(Km,{onClick:()=>{var m,h;p.id==="1"?o(Jm):(h=(m=window.Telegram)==null?void 0:m.WebApp)==null||h.showAlert(`Loading game: ${p.title} (not yet implemented)`)},children:[X.jsx(Ym,{children:p.title}),X.jsx(Xm,{children:p.description})]},p.id))})]})})};let nr=document.getElementById("root");nr||(nr=document.createElement("div"),nr.id="root",document.body.appendChild(nr));Jo.createRoot(nr).render(X.jsx(Tt.StrictMode,{children:X.jsx(qm,{})}));
+//# sourceMappingURL=index-oKdcDYym.js.map

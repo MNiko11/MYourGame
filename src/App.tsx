@@ -213,7 +213,7 @@ const App: React.FC = () => {
       const mainButton = window.Telegram.WebApp.MainButton;
 
       if (selectedGameCode) {
-        mainButton.setText('Back to Games');
+        mainButton.setText('⬅️ Back');
         mainButton.show();
         const backHandler = () => {
           setSelectedGameCode(null);

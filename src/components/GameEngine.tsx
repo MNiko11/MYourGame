@@ -29,7 +29,6 @@ const GameGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(32, 1fr);
   grid-template-rows: repeat(32, 1fr);
-  gap: 1px;
   padding: 10px;
   background-color: var(--tg-theme-hint-color, #999999);
 `;
