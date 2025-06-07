@@ -1,10 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { WebApp } from '@twa-dev/sdk';
+// import { WebApp } from '@twa-dev/sdk'; // WebApp будет инициализирован в App.tsx
 
 // Initialize Telegram WebApp
-WebApp.ready();
+// WebApp.ready(); // Удален преждевременный вызов
 
 // Create root element if it doesn't exist
 let rootElement = document.getElementById('root');
