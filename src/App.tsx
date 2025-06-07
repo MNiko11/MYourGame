@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import GameEngine, { GameState } from './components/GameEngine';
 
 declare global {
   interface Window {
@@ -8,6 +9,13 @@ declare global {
         ready: () => void;
         expand: () => void;
         showAlert: (message: string) => void;
+        MainButton: {
+          setText: (text: string) => void;
+          show: () => void;
+          hide: () => void;
+          onClick: (callback: () => void) => void;
+          offClick: (callback: () => void) => void;
+        };
         // Добавьте другие методы, которые вы используете
       };
     };
@@ -110,9 +118,114 @@ const mockGames: Game[] = [
   },
 ];
 
+const snakeGameCode = `
+# Snake Game
+# Variables
+var score = 0
+var snake_length = 3
+var direction = 0  # 0: right, 1: down, 2: left, 3: up
+
+# Display variables
+display score, snake_length
+
+# Initial snake position
+set 15,15,1
+set 14,15,1
+set 13,15,1
+
+# Food position
+set 20,20,2
+
+# Controls
+button "up" {
+    if direction != 1 {
+        direction = 3
+    }
+}
+
+button "down" {
+    if direction != 3 {
+        direction = 1
+    }
+}
+
+button "left" {
+    if direction != 0 {
+        direction = 2
+    }
+}
+
+button "right" {
+    if direction != 2 {
+        direction = 0
+    }
+}
+
+# Game loop
+loop {
+    # Move snake
+    if direction == 0 {
+        # Move right
+        set snake_x + 1, snake_y, 1
+    }
+    else if direction == 1 {
+        # Move down
+        set snake_x, snake_y + 1, 1
+    }
+    else if direction == 2 {
+        # Move left
+        set snake_x - 1, snake_y, 1
+    }
+    else if direction == 3 {
+        # Move up
+        set snake_x, snake_y - 1, 1
+    }
+
+    # Check for food collision
+    if get snake_x, snake_y == 2 {
+        score = score + 10
+        snake_length = snake_length + 1
+        # Generate new food
+        set random(0,31), random(0,31), 2
+    }
+
+    # Check for wall collision
+    if snake_x < 0 or snake_x > 31 or snake_y < 0 or snake_y > 31 {
+        # Game over
+        stop
+    }
+
+    # Update display
+    update
+    draw
+}
+`;
+
 const App: React.FC = () => {
   const [selectedFormat, setSelectedFormat] = useState<GameFormat>('all');
   const [games, setGames] = useState<Game[]>(mockGames);
+  const [selectedGameCode, setSelectedGameCode] = useState<string | null>(null);
+  const [currentGameVariables, setCurrentGameVariables] = useState<Record<string, number>>({});
+
+  // Handle Telegram WebApp MainButton for navigation
+  React.useEffect(() => {
+    if (window.Telegram?.WebApp) {
+      const mainButton = window.Telegram.WebApp.MainButton;
+
+      if (selectedGameCode) {
+        mainButton.setText('Back to Games');
+        mainButton.show();
+        const backHandler = () => {
+          setSelectedGameCode(null);
+          mainButton.hide();
+          mainButton.offClick(backHandler);
+        };
+        mainButton.onClick(backHandler);
+      } else {
+        mainButton.hide();
+      }
+    }
+  }, [selectedGameCode]);
 
   // Initialize Telegram WebApp
   React.useEffect(() => {
@@ -126,31 +239,54 @@ const App: React.FC = () => {
     selectedFormat === 'all' || game.format === selectedFormat
   );
 
+  const handleGameStateChange = (newState: GameState) => {
+    setCurrentGameVariables(newState.variables);
+    // You might want to update other parts of App.tsx based on game state
+  };
+
   return (
     <AppContainer>
-      <FormatSelector>
-        <FormatButton 
-          active={selectedFormat === 'all'} 
-          onClick={() => setSelectedFormat('all')}
-        >
-          All
-        </FormatButton>
-        <FormatButton 
-          active={selectedFormat === '32x32'} 
-          onClick={() => setSelectedFormat('32x32')}
-        >
-          32x32
-        </FormatButton>
-      </FormatSelector>
+      {!selectedGameCode ? (
+        <>
+          <FormatSelector>
+            <FormatButton 
+              active={selectedFormat === 'all'} 
+              onClick={() => setSelectedFormat('all')}
+            >
+              All
+            </FormatButton>
+            <FormatButton 
+              active={selectedFormat === '32x32'} 
+              onClick={() => setSelectedFormat('32x32')}
+            >
+              32x32
+            </FormatButton>
+          </FormatSelector>
 
-      <GameHub>
-        {filteredGames.map(game => (
-          <GameCard key={game.id} onClick={() => window.Telegram?.WebApp?.showAlert(`Loading game: ${game.title}`)}>
-            <GameTitle>{game.title}</GameTitle>
-            <GameDescription>{game.description}</GameDescription>
-          </GameCard>
-        ))}
-      </GameHub>
+          <GameHub>
+            {filteredGames.map(game => (
+              <GameCard 
+                key={game.id} 
+                onClick={() => {
+                  if (game.id === '1') { // Assuming '1' is Snake for now
+                    setSelectedGameCode(snakeGameCode);
+                  } else {
+                    window.Telegram?.WebApp?.showAlert(`Loading game: ${game.title} (not yet implemented)`);
+                  }
+                }}
+              >
+                <GameTitle>{game.title}</GameTitle>
+                <GameDescription>{game.description}</GameDescription>
+              </GameCard>
+            ))}
+          </GameHub>
+        </>
+      ) : (
+        <GameEngine 
+          gameCode={selectedGameCode} 
+          onGameStateChange={handleGameStateChange} 
+        />
+      )}
     </AppContainer>
   );
 };
