@@ -86,9 +86,33 @@ interface Game {
   file: string;
 }
 
+const mockGames: Game[] = [
+  {
+    id: '1',
+    title: 'Snake',
+    description: 'Classic snake game.',
+    format: '32x32',
+    file: 'snake.mygt',
+  },
+  {
+    id: '2',
+    title: 'Tetris',
+    description: 'A timeless puzzle game.',
+    format: '32x32',
+    file: 'tetris.mygt',
+  },
+  {
+    id: '3',
+    title: 'Pong',
+    description: 'The original arcade tennis game.',
+    format: 'all',
+    file: 'pong.mygt',
+  },
+];
+
 const App: React.FC = () => {
   const [selectedFormat, setSelectedFormat] = useState<GameFormat>('all');
-  const [games, setGames] = useState<Game[]>([]);
+  const [games, setGames] = useState<Game[]>(mockGames);
 
   // Initialize Telegram WebApp
   React.useEffect(() => {
