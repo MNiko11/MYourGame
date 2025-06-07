@@ -78,6 +78,7 @@ class MYGInterpreter {
   private gameLoopInterval: number | null = null;
   private loopInstructions: (() => void)[] = [];
   private readonly initialGrid: number[][];
+  private initialSnakeBody: [number, number][] = [];
 
   constructor() {
     const initialGrid = Array(32).fill(null).map(() => Array(32).fill(0));
@@ -103,15 +104,6 @@ class MYGInterpreter {
 
     if (this.state.variables.hasOwnProperty(expression)) {
       return this.state.variables[expression];
-    }
-    
-    if (expression === 'snake_x') {
-        const head = this.getSnakeHead();
-        return head ? head[0] : 0;
-    }
-    if (expression === 'snake_y') {
-        const head = this.getSnakeHead();
-        return head ? head[1] : 0;
     }
     
     const randomMatch = expression.match(/random\((\d+),(\d+)\)/);
@@ -168,6 +160,7 @@ class MYGInterpreter {
       foodPosition: null,
     };
     this.loopInstructions = [];
+    this.initialSnakeBody = [];
 
     const lines = code.split('\n');
     let inLoop = false;
@@ -231,7 +224,7 @@ class MYGInterpreter {
           const value = this.evaluateExpression(match[3]);
           if (x >= 0 && x < 32 && y >= 0 && y < 32) {
               if (value === 1) {
-                  this.state.snakeBody.push([x, y]);
+                  this.initialSnakeBody.unshift([x, y]);
               } else if (value === 2) {
                   this.state.foodPosition = [x, y];
               }
@@ -248,6 +241,12 @@ class MYGInterpreter {
       }
       else if (line === 'loop {') {
         inLoop = true;
+        if (this.initialSnakeBody.length > 0) {
+            const head = this.initialSnakeBody[this.initialSnakeBody.length - 1];
+            this.state.variables['snake_x'] = head[0];
+            this.state.variables['snake_y'] = head[1];
+            this.state.snakeBody = [...this.initialSnakeBody];
+        }
       }
       else if (line.startsWith('if ')) {
         const conditionString = line.substring('if '.length, line.indexOf('{')).trim();
@@ -337,6 +336,8 @@ class MYGInterpreter {
         if (x >= 0 && x < 32 && y >= 0 && y < 32) {
             if (value === 1) {
                 this.state.snakeBody.push([x, y]);
+                this.state.variables['snake_x'] = x;
+                this.state.variables['snake_y'] = y;
                 const snakeLength = this.state.variables['snake_length'] || 0;
                 if (this.state.snakeBody.length > snakeLength) {
                     const tail = this.state.snakeBody.shift();
