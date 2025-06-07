@@ -1,6 +1,18 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { WebApp } from '@twa-dev/sdk';
+
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        ready: () => void;
+        expand: () => void;
+        showAlert: (message: string) => void;
+        // Добавьте другие методы, которые вы используете
+      };
+    };
+  }
+}
 
 const AppContainer = styled.div`
   display: flex;
@@ -80,8 +92,10 @@ const App: React.FC = () => {
 
   // Initialize Telegram WebApp
   React.useEffect(() => {
-    WebApp.ready();
-    WebApp.expand();
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+    }
   }, []);
 
   const filteredGames = games.filter(game => 
@@ -107,7 +121,7 @@ const App: React.FC = () => {
 
       <GameHub>
         {filteredGames.map(game => (
-          <GameCard key={game.id} onClick={() => WebApp.showAlert(`Loading game: ${game.title}`)}>
+          <GameCard key={game.id} onClick={() => window.Telegram?.WebApp?.showAlert(`Loading game: ${game.title}`)}>
             <GameTitle>{game.title}</GameTitle>
             <GameDescription>{game.description}</GameDescription>
           </GameCard>
