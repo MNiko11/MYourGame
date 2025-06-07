@@ -16,6 +16,9 @@ declare global {
           onClick: (callback: () => void) => void;
           offClick: (callback: () => void) => void;
         };
+        initDataUnsafe?: { // Added for passing game data
+          start_param?: string;
+        };
         // Добавьте другие методы, которые вы используете
       };
     };
@@ -62,35 +65,35 @@ const GameHub = styled.div`
 
 const GameCard = styled.div`
   background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
-  border-radius: 8px;
-  padding: 10px;
+  border-radius: 8px; /* Slightly smaller border-radius */
+  padding: 10px; /* Reduced padding */
   cursor: pointer;
   transition: transform 0.2s ease;
-  min-height: 80px;
+  min-height: 80px; /* Set a minimum height for consistency */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 
   &:hover {
-    transform: scale(1.03);
+    transform: scale(1.03); /* Slightly less aggressive scale on hover */
   }
 `;
 
 const GameTitle = styled.h3`
   margin: 0;
-  font-size: 15px;
+  font-size: 15px; /* Slightly smaller font size */
   color: var(--tg-theme-text-color, #000000);
-  white-space: nowrap;
+  white-space: nowrap; /* Prevent title from wrapping */
   overflow: hidden;
   text-overflow: ellipsis;
 `;
 
 const GameDescription = styled.p`
-  margin: 4px 0 0;
-  font-size: 11px;
+  margin: 4px 0 0; /* Reduced margin */
+  font-size: 11px; /* Slightly smaller font size */
   color: var(--tg-theme-hint-color, #999999);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
+  display: -webkit-box; /* Enable multiline ellipsis */
+  -webkit-line-clamp: 2; /* Limit to 2 lines */
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -103,121 +106,35 @@ interface Game {
   title: string;
   description: string;
   format: GameFormat;
-  file: string;
+  code: string; // Changed from 'file' to 'code' to store content directly
 }
-
-const mockGames: Game[] = [
-  {
-    id: '1',
-    title: 'Snake',
-    description: 'Classic snake game.',
-    format: '32x32',
-    file: 'snake.mygt',
-  },
-  {
-    id: '2',
-    title: 'Tetris',
-    description: 'A timeless puzzle game.',
-    format: '32x32',
-    file: 'tetris.mygt',
-  },
-  {
-    id: '3',
-    title: 'Pong',
-    description: 'The original arcade tennis game.',
-    format: 'all',
-    file: 'pong.mygt',
-  },
-];
-
-const snakeGameCode = `
-# Snake Game
-# Variables
-var score = 0
-var snake_length = 3
-var direction = 0  # 0: right, 1: down, 2: left, 3: up
-
-# Display variables
-display score, snake_length
-
-# Initial snake position
-set 15,15,1
-set 14,15,1
-set 13,15,1
-
-# Food position
-set 20,20,2
-
-# Controls
-button "up" {
-    if direction != 1 {
-        direction = 3
-    }
-}
-
-button "down" {
-    if direction != 3 {
-        direction = 1
-    }
-}
-
-button "left" {
-    if direction != 0 {
-        direction = 2
-    }
-}
-
-button "right" {
-    if direction != 2 {
-        direction = 0
-    }
-}
-
-# Game loop
-loop {
-    # Move snake
-    if direction == 0 {
-        # Move right
-        set snake_x + 1, snake_y, 1
-    }
-    else if direction == 1 {
-        # Move down
-        set snake_x, snake_y + 1, 1
-    }
-    else if direction == 2 {
-        # Move left
-        set snake_x - 1, snake_y, 1
-    }
-    else if direction == 3 {
-        # Move up
-        set snake_x, snake_y - 1, 1
-    }
-
-    # Check for food collision
-    if get snake_x, snake_y == 2 {
-        score = score + 10
-        snake_length = snake_length + 1
-        # Generate new food
-        set random(0,31), random(0,31), 2
-    }
-
-    # Check for wall collision
-    if snake_x < 0 or snake_x > 31 or snake_y < 0 or snake_y > 31 {
-        # Game over
-        stop
-    }
-
-    # Update display
-    update
-    draw
-}
-`;
 
 const App: React.FC = () => {
   const [selectedFormat, setSelectedFormat] = useState<GameFormat>('all');
-  const [games, setGames] = useState<Game[]>(mockGames);
+  const [games, setGames] = useState<Game[]>([]); // Initialize with empty array
   const [selectedGameCode, setSelectedGameCode] = useState<string | null>(null);
   const [currentGameVariables, setCurrentGameVariables] = useState<Record<string, number>>({});
+
+  // Initialize Telegram WebApp and load games if available
+  React.useEffect(() => {
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+
+      // Attempt to load games from initDataUnsafe if provided by bot
+      const initData = window.Telegram.WebApp.initDataUnsafe;
+      if (initData && initData.start_param) {
+        try {
+          const gamesData = JSON.parse(decodeURIComponent(initData.start_param));
+          if (Array.isArray(gamesData)) {
+            setGames(gamesData);
+          }
+        } catch (e) {
+          console.error("Failed to parse start_param for games:", e);
+        }
+      }
+    }
+  }, []);
 
   // Handle Telegram WebApp MainButton for navigation
   React.useEffect(() => {
@@ -238,14 +155,6 @@ const App: React.FC = () => {
       }
     }
   }, [selectedGameCode]);
-
-  // Initialize Telegram WebApp
-  React.useEffect(() => {
-    if (window.Telegram?.WebApp) {
-      window.Telegram.WebApp.ready();
-      window.Telegram.WebApp.expand();
-    }
-  }, []);
 
   const filteredGames = games.filter(game => 
     selectedFormat === 'all' || game.format === selectedFormat
@@ -276,21 +185,21 @@ const App: React.FC = () => {
           </FormatSelector>
 
           <GameHub>
-            {filteredGames.map(game => (
-              <GameCard 
-                key={game.id} 
-                onClick={() => {
-                  if (game.id === '1') { // Assuming '1' is Snake for now
-                    setSelectedGameCode(snakeGameCode);
-                  } else {
-                    window.Telegram?.WebApp?.showAlert(`Loading game: ${game.title} (not yet implemented)`);
-                  }
-                }}
-              >
-                <GameTitle>{game.title}</GameTitle>
-                <GameDescription>{game.description}</GameDescription>
-              </GameCard>
-            ))}
+            {filteredGames.length > 0 ? ( // Display games only if available
+              filteredGames.map(game => (
+                <GameCard 
+                  key={game.id} 
+                  onClick={() => setSelectedGameCode(game.code)} // Use game.code directly
+                >
+                  <GameTitle>{game.title}</GameTitle>
+                  <GameDescription>{game.description}</GameDescription>
+                </GameCard>
+              ))
+            ) : (
+              <p style={{ color: 'var(--tg-theme-hint-color)', textAlign: 'center', width: '100%' }}>
+                No games available. Send a .mygt file to the bot to add one!
+              </p>
+            )}
           </GameHub>
         </>
       ) : (
